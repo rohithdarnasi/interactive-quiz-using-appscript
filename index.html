@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      background-color: #46178f;
+      color: white;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+    .quiz-question {
+      margin-bottom: 20px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .quiz-options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .quiz-option {
+      background-color: #fff;
+      color: #333;
+      padding: 15px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .quiz-option:nth-child(1) { background-color: #e21b3c; }
+    .quiz-option:nth-child(2) { background-color: #1368ce; }
+    .quiz-option:nth-child(3) { background-color: #d89e00; }
+    .quiz-option:nth-child(4) { background-color: #26890c; }
+    .quiz-option:hover {
+      transform: scale(1.05);
+    }
+    .btn {
+      padding: 12px 24px;
+      background-color: #333;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+    .btn:hover {
+      background-color: #555;
+    }
+    h1 {
+      font-size: 36px;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+    h2 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+    #progressBar {
+      width: 100%;
+      background-color: #ddd;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #progress {
+      width: 0%;
+      height: 30px;
+      background-color: #1368ce;
+      text-align: center;
+      line-height: 30px;
+      color: white;
+      transition: width 0.5s ease-in-out;
+    }
+    #timer {
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    #loadingMessage {
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+      color: #333;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    #footer {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      font-size: 14px;
+      color: #ffffff;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div id="nameInputContainer" class="container">
+    <h1>Welcome to Interactive CWS Quiz!</h1>
+    <input type="text" id="nameInput" placeholder="Enter Your Name" style="padding: 10px; font-size: 18px; width: 300px; margin-bottom: 20px;"><br>
+    <button class="btn" onclick="setNameAndStartQuiz()">Start Quiz</button>
+  </div>
+
+  <div id="quizContainer" class="container" style="display: none;">
+    <div id="progressBar">
+      <div id="progress"></div>
+    </div>
+    <div id="timer">20</div>
+    <div id="questionContent"></div>
+  </div>
+
+  <div id="loadingMessage" style="display: none;">Please wait, submitting your answers...</div>
+
+  <div id="resultContainer" class="container" style="display: none;">
+    <h2>Quiz Results</h2>
+    <p id="userScoreMessage"></p>
+    <div id="performers"></div>
+    <div class="btn-container">
+      <button class="btn" onclick="showAnswers()">View Answers</button>
+      <button class="btn" onclick="closeQuiz()">Close Quiz</button>
+    </div>
+  </div>
+
+  <div id="answersContainer" class="container" style="display: none;">
+    <h2>Answers</h2>
+    <div id="answers"></div>
+    <div class="btn-container">
+      <button class="btn" onclick="closeQuiz()">Close Quiz</button>
+    </div>
+  </div>
+
+  <div id="footer">
+    Developed by Rohith Darnasi
+  </div>
+
+  <script>
+    var questions = [];
+    var currentQuestion = 0;
+    var responses = [];
+    var name = "";
+    var timer;
+    var timeLeft = 20;
+
+    function setNameAndStartQuiz() {
+      name = document.getElementById("nameInput").value.trim();
+      if (name) {
+        document.getElementById("nameInputContainer").style.display = "none";
+        startQuiz();
+      } else {
+        alert("Please enter your name.");
+      }
+    }
+
+    function startQuiz() {
+      google.script.run.withSuccessHandler(initializeQuiz).getQuestions();
+    }
+
+    function initializeQuiz(data) {
+      questions = data;
+      showNextQuestion();
+    }
+
+    function showNextQuestion() {
+      if (currentQuestion < questions.length) {
+        var questionObj = questions[currentQuestion];
+        var optionsHtml = "";
+        for (var i = 0; i < questionObj.options.length; i++) {
+          optionsHtml += `<div class="quiz-option" onclick="selectAnswer(this, '${questionObj.options[i]}')">${questionObj.options[i]}</div>`;
+        }
+        var questionHtml = `
+          <div class="quiz-question">${questionObj.question}</div>
+          <div class="quiz-options">
+            ${optionsHtml}
+          </div>
+        `;
+        document.getElementById("questionContent").innerHTML = questionHtml;
+        document.getElementById("quizContainer").style.display = "block";
+        updateProgressBar();
+        startTimer();
+      } else {
+        submitQuiz();
+      }
+    }
+
+    function selectAnswer(element, answer) {
+      clearInterval(timer);
+      responses[currentQuestion] = answer;
+      highlightSelectedAnswer(element);
+      setTimeout(() => {
+        currentQuestion++;
+        showNextQuestion();
+      }, 1000);
+    }
+
+    function highlightSelectedAnswer(element) {
+      var options = document.getElementsByClassName("quiz-option");
+      for (var i = 0; i < options.length; i++) {
+        options[i].style.opacity = "0.5";
+      }
+      element.style.opacity = "1";
+      element.style.transform = "scale(1.1)";
+    }
+
+    function startTimer() {
+      timeLeft = 20;
+      updateTimerDisplay();
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          responses[currentQuestion] = "";
+          currentQuestion++;
+          showNextQuestion();
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      document.getElementById("timer").textContent = timeLeft;
+    }
+
+    function submitQuiz() {
+      document.getElementById("loadingMessage").style.display = "block";
+      document.getElementById("quizContainer").style.display = "none";
+      google.script.run.withSuccessHandler(displayResultPage).evaluateQuizResponses(responses, name);
+    }
+
+    function displayResultPage(score) {
+      document.getElementById("loadingMessage").style.display = "none";
+      document.getElementById("userScoreMessage").textContent = `Your Score: ${score} out of ${questions.length}`;
+      google.script.run.withSuccessHandler(displayTopPerformers).getTopPerformers();
+    }
+
+    function displayTopPerformers(topPerformers) {
+      var performersHtml = '<h3>Top Performers</h3><table><tr><th>Name</th><th>Score</th></tr>';
+      for (var i = 0; i < topPerformers.length; i++) {
+        performersHtml += `<tr><td>${topPerformers[i][0]}</td><td>${topPerformers[i][2]}</td></tr>`;
+      }
+      performersHtml += '</table>';
+      document.getElementById("performers").innerHTML = performersHtml;
+      document.getElementById("resultContainer").style.display = "block";
+    }
+
+    function showAnswers() {
+      google.script.run.withSuccessHandler(displayAnswers).getAnswers(name);
+    }
+
+    function displayAnswers(answers) {
+      var answersArray = answers.split(', ');
+      var answersHtml = "";
+      for (var i = 0; i < questions.length; i++) {
+        answersHtml += `<p><strong>${questions[i].question}</strong><br>Correct Answer: ${questions[i].correctAnswer}<br>Your Answer: ${answersArray[i] || 'Not answered'}</p>`;
+      }
+      document.getElementById("answers").innerHTML = answersHtml;
+      document.getElementById("resultContainer").style.display = "none";
+      document.getElementById("answersContainer").style.display = "block";
+    }
+
+    function closeQuiz() {
+      document.getElementById("resultContainer").style.display = "none";
+      document.getElementById("answersContainer").style.display = "none";
+      document.getElementById("nameInputContainer").style.display = "none";
+      document.body.innerHTML = `<div class="container"><h1>Thank you for participating!</h1></div>`;
+      name = "";
+      currentQuestion = 0;
+      responses = [];
+    }
+
+    function updateProgressBar() {
+      var progress = ((currentQuestion + 1) / questions.length) * 100;
+      document.getElementById("progress").style.width = progress + "%";
+    }
+
+  </script>
+</body>
+</html>
